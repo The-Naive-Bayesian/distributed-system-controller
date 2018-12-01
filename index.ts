@@ -31,7 +31,7 @@ app.post('/', (req: Request, res: Response) => {
     const newSessionId = `${connectionCount++}`;
     const options = {method: 'POST'};
 
-    fetch(`http://localhost:${config.containerServiceUrl}`, options)
+    fetch(config.containerServiceUrl, options)
         .then(res => res.json())
         .then(({id, port}) => {
             clientMap[newSessionId] = {
@@ -49,25 +49,35 @@ app.post('/', (req: Request, res: Response) => {
 // Do an action on a session
 app.post('/:sessionId', (req: Request, res: Response) => {
     const {sessionId}: {sessionId: string} = req.params;
-    const {endpoint} = clientMap[sessionId];
+    const sessionData = clientMap[sessionId];
 
-    const requestData = req.body;
-    const options = {
-        method: 'POST',
-        body: JSON.stringify(requestData),
-        headers: {'Content-Type': 'application/json'}
-    };
+    if (sessionData) {
+        const {endpoint} = clientMap[sessionId];
+        const requestData = req.body;
 
-    if (endpoint) {
-        fetch(endpoint, options)
-            .then(res => res.json())
-            .then(data => {
-                res.send(data);
-            })
-            .catch(err => {
-                res.status(500);
-                res.send(err);
-            });
+        const options = {
+            method: 'GET',
+        };
+        // const options = {
+        //     method: 'POST',
+        //     body: JSON.stringify(requestData),
+        //     headers: {'Content-Type': 'application/json'}
+        // };
+
+        if (endpoint) {
+            fetch(endpoint, options)
+                .then(res => res.json())
+                .then(data => {
+                    res.send(data);
+                })
+                .catch(err => {
+                    res.status(500);
+                    res.send(err);
+                });
+        } else {
+            res.status(404);
+            res.send(`Error: sessionId ${sessionId} not found`);
+        }
     } else {
         res.status(404);
         res.send(`Error: sessionId ${sessionId} not found`);
@@ -80,7 +90,7 @@ app.delete('/:sessionId', (req: Request, res: Response) => {
     const options = {method: 'DELETE'};
 
     if (clientMap[sessionId]) {
-        fetch(`http://localhost:${config.containerServiceUrl}`, options)
+        fetch(`${config.containerServiceUrl}/${clientMap[sessionId].containerId}`, options)
             .then(res => res.json())
             .then(() => {
                 delete clientMap[sessionId];
